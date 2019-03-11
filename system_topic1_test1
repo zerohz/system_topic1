@@ -1,0 +1,51 @@
+一、
+	1.getpid（）在64位linux系统中的系统调用号为39（查表得知），在32位linux系统中的系统调用号位20，起着查看当前运行的进程号的作用，在linux系统中调用的系统中断号为0x80(由汇编代码中int $0x80得知)
+	2.
+		a.linux调用printf输出helloworld
+			首先我们用vim编写一个hello.c文件如下：
+				int main(){
+					printf("hello world\n");
+					return 0;
+				}
+			保存，使用gcc编译它
+				gcc -o hello hello.c
+			而后，进入其所在的目录，运行
+				./hello
+			即可输出helloworld
+		b.使用汇编实现helloworld，我们在这里有两种方法去实现，第一种是采用linux系统自带的AT&T汇编格式直接进行汇编，第二种是采用c语言内嵌汇编语言的方式进行编译，由于第二种方式的格式为
+			asm volatile(汇编代码)
+		故我们主要展示第一种方式，首先我们首先编写一段汇编代码，并保存在helloworld.s文件中
+			#helloworld.s
+				.data                                # 数据段声明
+    			msg : .string "hello,world!\n"    # 要输出的字符串
+    			len = . - msg                    # 字串长度
+				.text                                # 代码段声明
+				.global _start                        # 指定入口函数
+
+				_start:                                # 在屏幕上显示一个字符串
+    			movl $len, %edx                    # 参数三：字符串长度
+    			movl $msg, %ecx                    # 参数二：要显示的字符串
+    			movl $1, %ebx                    # 参数一：文件描述符(stdout)
+    			movl $4, %eax                    # 系统调用号(sys_write)
+    			int $0x80                        # 调用内核功能    
+                                    # 退出程序
+    			movl $0, %ebx                    # 参数一：退出代码
+    			movl $1, %eax                    # 系统调用号(sys_exit)
+    			int $0x80                        # 调用内核功能
+			#end
+		而后将其编译、链接、运行
+			as -o helloworld.o helloworld.s
+			ld -o helloworld helloworld.o
+		随后运行该文件即可
+			./hellowolrd
+二、
+	1.功能：在没有输入变量的情况下输出提示语，在输入变量的情况下一值将该变量输出
+	2.运行无限次
+
+三、
+	1.功能：查看程序分配的内存地址，并查看这之后正在运行的进程号及其所占用的相对内存位置
+	2.不同，共享，因为在结束了本次的进程之后，其运行内存释放掉了，被其他运行的进程所占用
+四、
+	1.功能：模拟进程的创建与运行，并查看其开始与结束点
+	2.结束点始终为输入参数的2倍，我的解释：在creat时对于p1和p2的分别建立中运行了两次worker故结束点始终是输入参数的两倍
+	3.共享变量：loops,counter;会，因为loops与counter均为全局变量，如果在并发过程中，进程1修改了这两个变量，但进入了等候io的过程，这时候进程2同样需要这两个变量，对该两个变量进行了修改，这样，在进程1完成io再调用这两个变量时，其值已经改变，是错误值
